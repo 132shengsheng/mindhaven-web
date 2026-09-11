@@ -160,9 +160,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                       ...prev,
                       baseURL: 'https://tokenflow.run/v1',
                       model: 'grok-3-mini-fast',
-                      apiKey:
-                        prev.apiKey ||
-                        'sk-79a28171042020c167a29789b1048388178fb401a3d9d8cc56cfec826cc646cf',
+                      apiKey: prev.apiKey || '',
                     }))
                   }
                   className="text-xs px-2.5 py-1 rounded-full bg-[#EBF3EF] text-[#224337] border border-[#4D7A68]/20 hover:bg-[#dfece5] transition-colors font-medium cursor-pointer"
