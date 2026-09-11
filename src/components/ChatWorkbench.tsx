@@ -244,12 +244,15 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
         updatedAt: Date.now(),
       });
     } catch (err: unknown) {
-      const errorMessage = err instanceof Error ? err.message : '与疏导助手连接出现异常，请稍后重试。';
+      let errorMessage = err instanceof Error ? err.message : '与疏导助手连接出现异常，请稍后重试。';
+      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError')) {
+        errorMessage = '连接大模型服务出现网络或跨域限制（浏览器 CORS 拦截）。若您配置的服务商不支持网页前端直接跨域调用，推荐使用原生支持浏览器直连的 DeepSeek 官方接口（https://api.deepseek.com/v1），或清空 Key 即可无缝切换为内置离线高拟真学者模式。';
+      }
       await db.messages.add({
         id: 'msg-err-' + Date.now(),
         sessionId: currentSessionId,
         role: 'assistant',
-        content: `【温馨提示】${errorMessage}（你可以在右上角“港湾配置”中检查 API 设置，或清空 Key 使用内置离线纯净疏导模式）`,
+        content: `【温馨提示】${errorMessage}（你可以在左下角“模型与隐私设置”中调整配置，或清空 Key 使用内置离线纯净疏导模式）`,
         createdAt: Date.now(),
       });
     } finally {

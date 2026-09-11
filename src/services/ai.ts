@@ -204,22 +204,40 @@ async function callRealAIStream(
   };
 
   let response: Response;
-  try {
-    const proxyRes = await fetch('/api/proxy', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${settings.apiKey.trim()}`,
-        'x-target-url': url,
-      },
-      body: JSON.stringify(payload),
-    });
-    if (proxyRes.status === 404) {
-      throw new Error('Proxy endpoint not found (static deployment)');
+  const isLocalDev = typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  );
+
+  // 本地开发环境优先尝试 Vite 代理避免跨域；线上静态托管（如 GitHub Pages）直接请求大模型 API
+  if (isLocalDev) {
+    try {
+      const proxyRes = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.apiKey.trim()}`,
+          'x-target-url': url,
+        },
+        body: JSON.stringify(payload),
+      });
+      if (proxyRes.ok) {
+        response = proxyRes;
+      } else {
+        throw new Error(`Proxy status: ${proxyRes.status}`);
+      }
+    } catch {
+      response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${settings.apiKey.trim()}`,
+        },
+        body: JSON.stringify(payload),
+      });
     }
-    response = proxyRes;
-  } catch {
-    // 若在纯静态托管环境无 /api/proxy 时，自动降级为浏览器直连
+  } else {
+    // 生产环境直接请求目标 API
     response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -231,8 +249,8 @@ async function callRealAIStream(
   }
 
   if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`API 请求失败 (${response.status}): ${errorText}`);
+    const errorText = await response.text().catch(() => '');
+    throw new Error(`API 请求失败 (${response.status}): ${errorText.slice(0, 180)}`);
   }
 
   const reader = response.body?.getReader();
@@ -394,21 +412,38 @@ export async function generateRationalThoughts(
       };
 
       let response: Response;
-      try {
-        const proxyRes = await fetch('/api/proxy', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${settings.apiKey.trim()}`,
-            'x-target-url': `${cleanBaseURL}/chat/completions`,
-          },
-          body: JSON.stringify(thoughtPayload),
-        });
-        if (proxyRes.status === 404) {
-          throw new Error('Proxy endpoint not found');
+      const isLocalDev = typeof window !== 'undefined' && (
+        window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1'
+      );
+
+      if (isLocalDev) {
+        try {
+          const proxyRes = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${settings.apiKey.trim()}`,
+              'x-target-url': `${cleanBaseURL}/chat/completions`,
+            },
+            body: JSON.stringify(thoughtPayload),
+          });
+          if (proxyRes.ok) {
+            response = proxyRes;
+          } else {
+            throw new Error(`Proxy status: ${proxyRes.status}`);
+          }
+        } catch {
+          response = await fetch(`${cleanBaseURL}/chat/completions`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${settings.apiKey.trim()}`,
+            },
+            body: JSON.stringify(thoughtPayload),
+          });
         }
-        response = proxyRes;
-      } catch {
+      } else {
         response = await fetch(`${cleanBaseURL}/chat/completions`, {
           method: 'POST',
           headers: {
