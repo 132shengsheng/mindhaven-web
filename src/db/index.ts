@@ -6,6 +6,7 @@ export interface ChatSession {
   createdAt: number;
   updatedAt: number;
   cbtStage: 1 | 2 | 3 | 4; // 1: 倾听倾诉, 2: 捕获思维, 3: 检验偏差, 4: 重构行动
+  school?: string; // 所选咨询流派视角: 'cbt' | 'humanistic' | 'psychodynamic' | 'act' | 'sfbt'
 }
 
 export interface ChatMessage {
@@ -14,6 +15,8 @@ export interface ChatMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
   distortionTag?: string; // 识别出的认知偏差（如：非黑即白、灾难化等）
+  techniqueTag?: string;  // 运用的临床微技术（如：双标反照法、行为激活微步、正常化脱敏）
+  schoolTag?: string;     // 所属学派视角
   cbtStage?: 1 | 2 | 3 | 4;
   createdAt: number;
 }

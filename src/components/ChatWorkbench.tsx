@@ -15,11 +15,27 @@ import {
   VolumeX,
   Copy,
   Check,
+  GraduationCap,
+  ChevronDown,
+  MessageSquare,
+  ShieldAlert,
+  FileText,
+  User,
+  Bot,
+  Layers,
 } from 'lucide-react';
 import { db, type ChatMessage } from '../db';
-import { streamAIChat } from '../services/ai';
+import { streamAIChat, SCHOOL_PERSPECTIVES } from '../services/ai';
 import { checkCrisisIntent } from '../utils/safety';
 import { SCENARIOS, CATEGORIES, type CategoryKey } from '../data/scenarios';
+import {
+  THEORY_SCHOOLS,
+  MICRO_TECHNIQUES,
+  CLINICAL_CASES,
+  TECHNIQUE_TEMPLATES,
+  CRISIS_SOP,
+  type ClinicalCase,
+} from '../data/knowledgeBase';
 import { soundTherapy } from '../utils/audio';
 
 interface ChatWorkbenchProps {
@@ -79,6 +95,12 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
   const [isRainActive, setIsRainActive] = useState(soundTherapy.isPlaying);
   const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
 
+  // 网页对话内嵌心理咨询知识库状态
+  const [isKBModalOpen, setIsKBModalOpen] = useState(false);
+  const [kbTab, setKbTab] = useState<'techniques' | 'cases' | 'templates' | 'schools' | 'crisis'>('techniques');
+  const [selectedCase, setSelectedCase] = useState<ClinicalCase | null>(null);
+  const [showSchoolMenu, setShowSchoolMenu] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -93,23 +115,40 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
     [currentSessionId]
   ) || [];
 
+  const [activeSchoolId, setActiveSchoolId] = useState<string>(session?.school || 'cbt');
+
+  useEffect(() => {
+    if (session?.school) {
+      setActiveSchoolId(session.school);
+    }
+  }, [session?.school]);
+
+  const handleSelectSchool = async (schoolKey: string) => {
+    setActiveSchoolId(schoolKey);
+    setShowSchoolMenu(false);
+    await db.sessions.update(currentSessionId, { school: schoolKey, updatedAt: Date.now() });
+  };
+
   const currentStage = session?.cbtStage || 1;
   const activeStageInfo = CBT_STAGES_INFO.find(s => s.stage === currentStage) || CBT_STAGES_INFO[0];
+  const activeSchoolConfig = SCHOOL_PERSPECTIVES[activeSchoolId] || SCHOOL_PERSPECTIVES['cbt'];
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingContent]);
 
-  // 按键监听：Escape 关闭抽屉
+  // 按键监听：Escape 关闭抽屉与弹窗
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isPromptDrawerOpen) {
-        setIsPromptDrawerOpen(false);
+      if (e.key === 'Escape') {
+        if (isPromptDrawerOpen) setIsPromptDrawerOpen(false);
+        if (isKBModalOpen) setIsKBModalOpen(false);
+        if (showSchoolMenu) setShowSchoolMenu(false);
       }
     };
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
-  }, [isPromptDrawerOpen]);
+  }, [isPromptDrawerOpen, isKBModalOpen, showSchoolMenu]);
 
   // 切换白噪音细雨声
   const toggleRainTherapy = () => {
@@ -180,6 +219,7 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
       const result = await streamAIChat({
         messages: historyPayload,
         cbtStage: currentStage,
+        schoolId: activeSchoolId,
         onChunk: chunk => {
           setStreamingContent(prev => prev + chunk);
         },
@@ -192,6 +232,8 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
         role: 'assistant',
         content: result.fullContent,
         distortionTag: result.detectedDistortion,
+        techniqueTag: result.techniqueTag,
+        schoolTag: result.schoolTag,
         cbtStage: result.nextStage,
         createdAt: Date.now(),
       });
@@ -294,12 +336,72 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
             })}
           </div>
 
-          {/* 顶栏右侧快捷工具胶囊群：静谧雨声白噪音 + 阶段指引 */}
+          {/* 顶栏右侧快捷工具胶囊群：流派视角 + 知识库锦囊 + 静谧雨声 + 阶段指引 */}
           <div className="flex items-center gap-2 shrink-0">
+            {/* 咨询学派视角切换器 */}
+            <div className="relative">
+              <button
+                onClick={() => setShowSchoolMenu(!showSchoolMenu)}
+                className="flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-full border bg-white/90 hover:bg-white text-[#224337] border-[#4D7A68]/30 shadow-2xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer font-medium"
+                title="切换当前咨询流派视角"
+              >
+                <span className="text-xs">{activeSchoolConfig.icon}</span>
+                <span className="hidden sm:inline text-[11.5px] font-sans">{activeSchoolConfig.shortName}</span>
+                <ChevronDown className={`w-3 h-3 text-stone-400 transition-transform ${showSchoolMenu ? 'rotate-180' : ''}`} />
+              </button>
+
+              {/* 流派下拉选择菜单 */}
+              {showSchoolMenu && (
+                <div className="absolute right-0 top-full mt-2 w-72 bg-white/95 backdrop-blur-xl border border-stone-200/80 rounded-2xl shadow-[0_16px_40px_rgba(34,67,55,0.16)] p-2 z-50 animate-scale-up space-y-1">
+                  <div className="px-2.5 py-1 text-[10.5px] font-semibold text-stone-400 uppercase tracking-wider">
+                    切换咨询学派视角
+                  </div>
+                  {Object.entries(SCHOOL_PERSPECTIVES).map(([key, item]) => {
+                    const isSelected = activeSchoolId === key;
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => handleSelectSchool(key)}
+                        className={`w-full text-left p-2.5 rounded-xl text-xs transition-all cursor-pointer flex items-start gap-2.5 ${
+                          isSelected
+                            ? 'bg-[#EBF3EF] text-[#224337] font-semibold border border-[#4D7A68]/30'
+                            : 'hover:bg-stone-50 text-stone-700'
+                        }`}
+                      >
+                        <span className="text-base mt-0.5">{item.icon}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span>{item.name}</span>
+                            {isSelected && <Check className="w-3.5 h-3.5 text-[#4D7A68]" />}
+                          </div>
+                          <div className="text-[10.5px] text-stone-400 font-normal line-clamp-1 mt-0.5">
+                            {item.focus}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            {/* 知识库实操锦囊快速唤起按钮 */}
+            <button
+              onClick={() => {
+                setIsKBModalOpen(true);
+                setSelectedCase(null);
+              }}
+              className="flex items-center gap-1 text-xs px-2.5 sm:px-3 py-1.5 rounded-full border bg-[#FCF7F0]/90 hover:bg-[#FAF3E8] text-[#73582A] border-[#C99A5B]/40 shadow-2xs hover:scale-[1.02] active:scale-95 transition-all cursor-pointer font-medium"
+              title="在对话中直接查阅 9 大微技术、6 大临床案例与 10 大干预模板"
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-[#C99A5B]" />
+              <span className="text-[11.5px]">知识库锦囊</span>
+            </button>
+
             {/* 白噪音治愈细雨开关 */}
             <button
               onClick={toggleRainTherapy}
-              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer shadow-2xs hover:scale-[1.02] active:scale-95 ${
+              className={`flex items-center gap-1.5 text-xs px-2.5 sm:px-3 py-1.5 rounded-full border transition-all cursor-pointer shadow-2xs hover:scale-[1.02] active:scale-95 ${
                 isRainActive
                   ? 'bg-[#EBF3EF] text-[#224337] border-[#4D7A68]/40 shadow-[0_2px_10px_rgba(77,122,104,0.18)] font-medium animate-pulse'
                   : 'bg-white/80 hover:bg-white text-stone-600 border-stone-200/80 hover:border-stone-300'
@@ -309,12 +411,12 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
               {isRainActive ? (
                 <>
                   <Volume2 className="w-3.5 h-3.5 text-[#4D7A68]" />
-                  <span className="text-[11.5px]">雨声流淌中</span>
+                  <span className="text-[11.5px] hidden sm:inline">雨声流淌中</span>
                 </>
               ) : (
                 <>
                   <VolumeX className="w-3.5 h-3.5 text-stone-400" />
-                  <span className="text-[11.5px]">🌧️ 静谧细雨</span>
+                  <span className="text-[11.5px]">🌧️ 雨声</span>
                 </>
               )}
             </button>
@@ -403,17 +505,78 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
                 ))}
               </div>
 
-              {/* 探索完整素材库入口 */}
-              <div className="pt-2">
+              {/* 探索完整素材库与知识库入口 */}
+              <div className="pt-2 flex flex-wrap items-center justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => setIsPromptDrawerOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 hover:bg-white border border-[#C99A5B]/30 hover:border-[#C99A5B]/60 text-xs font-medium text-[#73582A] shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-white/95 hover:bg-white border border-[#C99A5B]/30 hover:border-[#C99A5B]/60 text-xs font-medium text-[#73582A] shadow-2xs hover:shadow-xs transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-[#C99A5B]" />
-                  <span>探索更多心绪素材与场景对话（共 {SCENARIOS.length} 组场景）</span>
+                  <span>心绪场景素材库 ({SCENARIOS.length})</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setKbTab('cases');
+                    setIsKBModalOpen(true);
+                  }}
+                  className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-2xl bg-[#EBF3EF] hover:bg-[#E0ECE5] border border-[#4D7A68]/30 text-xs font-medium text-[#224337] shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                >
+                  <GraduationCap className="w-3.5 h-3.5 text-[#4D7A68]" />
+                  <span>临床逐字稿案例库 ({CLINICAL_CASES.length})</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              {/* 临床心理学真实逐字稿案例速选区 */}
+              <div className="pt-3 border-t border-stone-200/60 text-left max-w-xl mx-auto">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-[11.5px] font-semibold text-[#224337] flex items-center gap-1.5">
+                    <BookOpen className="w-3.5 h-3.5 text-[#4D7A68]" />
+                    <span>临床名家逐字稿演练（点击首句即刻代入对话）：</span>
+                  </span>
+                  <button
+                    onClick={() => {
+                      setKbTab('cases');
+                      setIsKBModalOpen(true);
+                    }}
+                    className="text-[11px] text-[#4D7A68] hover:text-[#224337] flex items-center gap-0.5 cursor-pointer font-medium"
+                  >
+                    <span>全案微观解析</span>
+                    <ArrowRight className="w-3 h-3" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                  {CLINICAL_CASES.slice(0, 4).map(c => {
+                    const firstLine = c.dialogue[0]?.text || '';
+                    return (
+                      <button
+                        key={c.id}
+                        onClick={() => handleSend(firstLine)}
+                        className="p-3 bg-white/90 hover:bg-white border border-stone-200/70 hover:border-[#4D7A68]/40 rounded-2xl transition-all duration-300 shadow-2xs hover:shadow-xs text-left cursor-pointer group"
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-[10px] font-medium text-[#4D7A68] bg-[#EBF3EF] px-2 py-0.5 rounded-md">
+                            {c.tag}
+                          </span>
+                          <span className="text-[10px] text-stone-400 font-mono">
+                            真实个案
+                          </span>
+                        </div>
+                        <div className="text-xs font-semibold text-stone-800 group-hover:text-[#224337] transition-colors line-clamp-1">
+                          {c.title}
+                        </div>
+                        <div className="text-[11px] text-stone-500 mt-1 line-clamp-2 italic leading-relaxed">
+                          “{firstLine}”
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           )}
@@ -442,14 +605,38 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
                 {/* 助手羊脂白玉容器 */}
                 <div className="space-y-2 flex-1 min-w-0">
                   <div className="bg-white/92 backdrop-blur-xl border border-white/95 rounded-[24px_24px_24px_6px] p-5 sm:p-6 text-[15.5px] leading-[1.85] text-stone-800 shadow-[0_10px_36px_rgba(34,67,55,0.06)] tracking-[0.015em] selection:bg-[#4D7A68]/20">
-                    {/* 晨露琥珀色认知偏差胶囊 (Wax seal badge) */}
-                    {msg.distortionTag && (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#FAF4EB] text-[#7A5B28] border border-[#E2CEB1] shadow-[0_2px_10px_rgba(201,154,91,0.12)] mb-3.5">
-                        <Lightbulb className="w-3.5 h-3.5 text-[#C99A5B]" />
-                        <span>觉察思维滤镜：</span>
-                        <span className="font-semibold text-[#66491D]">{msg.distortionTag}</span>
-                      </div>
-                    )}
+                    {/* 晨露琥珀色认知偏差胶囊 + 临床微技术标签 + 学派标签 */}
+                    <div className="flex flex-wrap items-center gap-2 mb-3.5">
+                      {msg.distortionTag && (
+                        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#FAF4EB] text-[#7A5B28] border border-[#E2CEB1] shadow-[0_2px_10px_rgba(201,154,91,0.12)]">
+                          <Lightbulb className="w-3.5 h-3.5 text-[#C99A5B]" />
+                          <span>觉察思维滤镜：</span>
+                          <span className="font-semibold text-[#66491D]">{msg.distortionTag}</span>
+                        </div>
+                      )}
+
+                      {msg.techniqueTag && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setKbTab('techniques');
+                            setIsKBModalOpen(true);
+                          }}
+                          className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#EBF3EF] text-[#224337] border border-[#4D7A68]/30 shadow-[0_2px_10px_rgba(77,122,104,0.1)] hover:bg-[#E0ECE5] cursor-pointer transition-colors"
+                          title="点击查看此微技术临床原理与实操范式"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-[#4D7A68]" />
+                          <span>运用微技术：</span>
+                          <span className="font-semibold text-[#183429]">{msg.techniqueTag}</span>
+                        </button>
+                      )}
+
+                      {msg.schoolTag && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10.5px] font-medium bg-stone-100 text-stone-600 border border-stone-200/70">
+                          {msg.schoolTag}
+                        </span>
+                      )}
+                    </div>
 
                     <div className="whitespace-pre-wrap font-sans text-stone-800/95">
                       {msg.content}
@@ -607,6 +794,20 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
               <Sparkles className="w-3.5 h-3.5 text-[#C99A5B]" />
               <span className="text-[11.5px] font-medium">
                 💡 心绪场景灵感库
+              </span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setIsKBModalOpen(true);
+                setSelectedCase(null);
+              }}
+              className="group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#EBF3EF]/95 hover:bg-[#E0ECE5] backdrop-blur-md border border-[#4D7A68]/30 shadow-[0_4px_16px_rgba(77,122,104,0.08)] hover:shadow-[0_6px_20px_rgba(77,122,104,0.15)] text-xs text-[#224337] transition-all hover:scale-[1.02] cursor-pointer"
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-[#4D7A68]" />
+              <span className="text-[11.5px] font-medium">
+                📚 咨询师知识库
               </span>
             </button>
           </div>
@@ -792,6 +993,519 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
                   </div>
                 );
               })}
+            </div>
+          </div>
+        </div>
+      )}
+      {/* 5. 网页对话内嵌心理咨询技术与临床案例知识库弹窗 (In-Chat Knowledge Base Sanctuary Modal) */}
+      {isKBModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/45 backdrop-blur-sm animate-fade-in"
+          onClick={() => setIsKBModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-4xl max-h-[90vh] bg-[#FAF9F6] border border-white/90 rounded-3xl shadow-[0_24px_64px_rgba(34,67,55,0.25)] flex flex-col overflow-hidden animate-scale-up"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Modal 顶栏 */}
+            <div className="px-6 py-4.5 border-b border-stone-200/70 bg-white/85 backdrop-blur-md flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-[#EBF3EF] text-[#224337] flex items-center justify-center shadow-2xs">
+                  <GraduationCap className="w-5 h-5 text-[#4D7A68]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-serif font-semibold text-[#224337]">
+                      心理咨询专业知识库 · 对话锦囊
+                    </h3>
+                    <span className="text-[10.5px] px-2 py-0.5 rounded-full bg-[#EBF3EF] text-[#224337] border border-[#4D7A68]/30 font-medium">
+                      当前流派：{activeSchoolConfig.name}
+                    </span>
+                  </div>
+                  <p className="text-xs text-stone-500 mt-0.5">
+                    融合五大学派理论、9 项核心微技术与 6 大真实临床逐字稿，可直接一键代入网页对话
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setIsKBModalOpen(false)}
+                className="w-8 h-8 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-500 flex items-center justify-center transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* 知识库主分类 Tab 导航 */}
+            <div className="px-6 py-2.5 border-b border-stone-200/60 bg-white/60 flex items-center gap-2 overflow-x-auto shrink-0">
+              <button
+                type="button"
+                onClick={() => { setKbTab('techniques'); setSelectedCase(null); }}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  kbTab === 'techniques'
+                    ? 'bg-[#224337] text-white shadow-xs'
+                    : 'bg-white hover:bg-stone-50 text-stone-700 border border-stone-200/70'
+                }`}
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>💡 微技术锦囊 (9项)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setKbTab('cases'); setSelectedCase(null); }}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  kbTab === 'cases'
+                    ? 'bg-[#224337] text-white shadow-xs'
+                    : 'bg-white hover:bg-stone-50 text-stone-700 border border-stone-200/70'
+                }`}
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>🎭 临床逐字稿案例 ({CLINICAL_CASES.length}组)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setKbTab('templates'); setSelectedCase(null); }}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  kbTab === 'templates'
+                    ? 'bg-[#224337] text-white shadow-xs'
+                    : 'bg-white hover:bg-stone-50 text-stone-700 border border-stone-200/70'
+                }`}
+              >
+                <FileText className="w-3.5 h-3.5" />
+                <span>📋 经典干预模板 ({TECHNIQUE_TEMPLATES.length}张)</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setKbTab('schools'); setSelectedCase(null); }}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  kbTab === 'schools'
+                    ? 'bg-[#224337] text-white shadow-xs'
+                    : 'bg-white hover:bg-stone-50 text-stone-700 border border-stone-200/70'
+                }`}
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>🏛️ 五大流派矩阵</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setKbTab('crisis'); setSelectedCase(null); }}
+                className={`px-3.5 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all cursor-pointer flex items-center gap-1.5 ${
+                  kbTab === 'crisis'
+                    ? 'bg-[#9C3D26] text-white shadow-xs'
+                    : 'bg-white hover:bg-rose-50 text-rose-700 border border-rose-200/70'
+                }`}
+              >
+                <ShieldAlert className="w-3.5 h-3.5" />
+                <span>🛡️ 危机干预 SOP</span>
+              </button>
+            </div>
+
+            {/* Modal 内容区 */}
+            <div className="flex-1 overflow-y-auto p-5 sm:p-6">
+              {/* 1. 微技术锦囊 */}
+              {kbTab === 'techniques' && (
+                <div className="space-y-6 animate-fade-in">
+                  {MICRO_TECHNIQUES.map((cat, idx) => (
+                    <div key={idx} className="space-y-3">
+                      <div className="flex items-center gap-2 border-b border-stone-200/60 pb-2">
+                        <span className="w-2 h-2 rounded-full bg-[#4D7A68]" />
+                        <h4 className="text-sm font-semibold text-[#224337]">
+                          {cat.category}
+                        </h4>
+                        <span className="text-xs text-stone-400">({cat.enCategory})</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+                        {cat.items.map((item, i) => (
+                          <div
+                            key={i}
+                            className="bg-white/90 border border-stone-200/70 hover:border-[#4D7A68]/40 rounded-2xl p-4 space-y-2.5 shadow-2xs hover:shadow-xs transition-all"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-stone-800">
+                                {item.name}
+                              </span>
+                              <span className="text-[10px] text-stone-400 font-mono">
+                                {item.enName}
+                              </span>
+                            </div>
+
+                            <p className="text-xs text-stone-600 leading-relaxed">
+                              {item.desc}
+                            </p>
+
+                            <div className="p-2.5 bg-[#FAF9F6] rounded-xl border border-stone-200/60 text-[11.5px] text-[#224337] italic leading-relaxed">
+                              “{item.example}”
+                            </div>
+
+                            <div className="flex items-center justify-end gap-2 pt-1">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setInputVal(item.example);
+                                  setIsKBModalOpen(false);
+                                  textareaRef.current?.focus();
+                                }}
+                                className="px-2.5 py-1 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium transition-colors cursor-pointer"
+                              >
+                                填入输入框
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsKBModalOpen(false);
+                                  handleSend(`请心理导师运用【${item.name}】微技术，帮我分析梳理当下的困扰与情绪。`);
+                                }}
+                                className="px-3 py-1 rounded-xl bg-[#224337] hover:bg-[#1a352b] text-white text-xs font-medium transition-all shadow-xs cursor-pointer flex items-center gap-1"
+                              >
+                                <span>向导师探讨此技术</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 2. 临床逐字稿案例 */}
+              {kbTab === 'cases' && (
+                <div className="animate-fade-in">
+                  {!selectedCase ? (
+                    <div className="space-y-4">
+                      <div className="p-3.5 bg-[#EBF3EF]/70 border border-[#4D7A68]/30 rounded-2xl text-xs text-[#224337] flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <BookOpen className="w-4 h-4 text-[#4D7A68]" />
+                          <span>点击“查看微观逐字稿”研读真实督导复盘，或点击“代入首句演练”开启实战模拟对话</span>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {CLINICAL_CASES.map(c => (
+                          <div
+                            key={c.id}
+                            className="bg-white/95 border border-stone-200/70 hover:border-[#4D7A68]/40 rounded-2xl p-4.5 space-y-3 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between"
+                          >
+                            <div className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <span className="text-[11px] font-medium text-[#4D7A68] bg-[#EBF3EF] px-2.5 py-0.5 rounded-full">
+                                  {c.tag}
+                                </span>
+                                <span className="text-[10.5px] text-stone-400">
+                                  {c.subTag}
+                                </span>
+                              </div>
+
+                              <h4 className="text-sm font-bold text-stone-800">
+                                {c.title}
+                              </h4>
+
+                              <p className="text-xs text-stone-500 leading-relaxed line-clamp-2">
+                                <span className="font-semibold text-stone-700">来访背景：</span>
+                                {c.clientBackground}
+                              </p>
+
+                              <div className="p-2.5 bg-stone-50 rounded-xl border border-stone-100 text-[11px] text-stone-600 leading-relaxed italic line-clamp-2">
+                                “{c.dialogue[0]?.text}”
+                              </div>
+                            </div>
+
+                            <div className="flex items-center justify-between pt-2 border-t border-stone-100">
+                              <button
+                                type="button"
+                                onClick={() => setSelectedCase(c)}
+                                className="text-xs font-semibold text-[#4D7A68] hover:text-[#224337] cursor-pointer flex items-center gap-1"
+                              >
+                                <span>查看微观逐字稿</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setIsKBModalOpen(false);
+                                  handleSend(c.dialogue[0]?.text);
+                                }}
+                                className="px-3 py-1.5 rounded-xl bg-[#224337] hover:bg-[#1a352b] text-white text-xs font-medium shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                              >
+                                <span>代入首句演练</span>
+                                <ArrowRight className="w-3 h-3" />
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {/* 单案逐字稿详情页 */}
+                      <div className="flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedCase(null)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-stone-600 hover:text-stone-900 bg-white border border-stone-200 px-3 py-1.5 rounded-xl transition-colors cursor-pointer"
+                        >
+                          ← 返回案例列表
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsKBModalOpen(false);
+                            handleSend(selectedCase.dialogue[0]?.text);
+                          }}
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-white bg-[#224337] hover:bg-[#1a352b] px-3.5 py-1.5 rounded-xl shadow-xs transition-all cursor-pointer"
+                        >
+                          <span>一键代入此案例首句与导师探讨</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+
+                      <div className="p-4 bg-white rounded-2xl border border-stone-200/80 space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-[#224337] bg-[#EBF3EF] px-2.5 py-0.5 rounded-full">
+                            {selectedCase.tag}
+                          </span>
+                          <h4 className="text-base font-serif font-bold text-stone-900">
+                            {selectedCase.title}
+                          </h4>
+                        </div>
+                        <p className="text-xs text-stone-600">
+                          <span className="font-semibold text-stone-800">来访背景：</span>
+                          {selectedCase.clientBackground}
+                        </p>
+                        <div className="p-3 bg-[#FAF4EB] text-[#7A5B28] rounded-xl border border-[#E2CEB1] text-xs leading-relaxed">
+                          <span className="font-semibold">💡 督导临床解析：</span>
+                          {selectedCase.therapeuticInsight}
+                        </div>
+                      </div>
+
+                      {/* 逐字稿对话气泡流 */}
+                      <div className="space-y-3.5 bg-[#FAF9F6] p-4 rounded-2xl border border-stone-200/60">
+                        <div className="text-xs font-semibold text-stone-400 uppercase tracking-wider">
+                          咨询室现场逐字还原 (Verbatim Transcripts)
+                        </div>
+
+                        {selectedCase.dialogue.map((item, dIdx) => (
+                          <div
+                            key={dIdx}
+                            className={`flex gap-3 items-start ${
+                              item.speaker === 'client' ? 'justify-end' : 'justify-start'
+                            }`}
+                          >
+                            {item.speaker === 'counselor' && (
+                              <div className="w-7 h-7 rounded-xl bg-[#EBF3EF] text-[#224337] flex items-center justify-center shrink-0 mt-1">
+                                <Bot className="w-3.5 h-3.5 text-[#4D7A68]" />
+                              </div>
+                            )}
+
+                            <div
+                              className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed ${
+                                item.speaker === 'client'
+                                  ? 'bg-[#224337] text-white rounded-tr-none'
+                                  : 'bg-white border border-stone-200 text-stone-800 shadow-2xs rounded-tl-none space-y-1.5'
+                              }`}
+                            >
+                              {item.speaker === 'counselor' && item.technique && (
+                                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#EBF3EF] text-[#224337] text-[10.5px] font-semibold">
+                                  <Sparkles className="w-3 h-3 text-[#4D7A68]" />
+                                  <span>技术：{item.technique}</span>
+                                </div>
+                              )}
+                              <p className="whitespace-pre-wrap">{item.text}</p>
+                            </div>
+
+                            {item.speaker === 'client' && (
+                              <div className="w-7 h-7 rounded-xl bg-stone-200 text-stone-600 flex items-center justify-center shrink-0 mt-1">
+                                <User className="w-3.5 h-3.5" />
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* 3. 经典干预模板 */}
+              {kbTab === 'templates' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                  {TECHNIQUE_TEMPLATES.map((tpl, tIdx) => (
+                    <div
+                      key={tIdx}
+                      className="bg-white/95 border border-stone-200/70 hover:border-[#4D7A68]/40 rounded-2xl p-4.5 space-y-3 shadow-2xs hover:shadow-xs transition-all flex flex-col justify-between"
+                    >
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-[10.5px] font-semibold text-[#4D7A68] bg-[#EBF3EF] px-2.5 py-0.5 rounded-full">
+                            {tpl.phase}
+                          </span>
+                          <span className="text-xs font-bold text-stone-800">
+                            {tpl.technique}
+                          </span>
+                        </div>
+
+                        <div className="p-3 bg-[#FAF9F6] rounded-xl border border-stone-200/60 text-xs text-stone-800 leading-relaxed font-sans italic">
+                          “{tpl.template}”
+                        </div>
+
+                        <p className="text-[11.5px] text-stone-500 leading-relaxed">
+                          <span className="font-semibold text-stone-700">机制原理：</span>
+                          {tpl.rationale}
+                        </p>
+                      </div>
+
+                      <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setInputVal(tpl.template);
+                            setIsKBModalOpen(false);
+                            textareaRef.current?.focus();
+                          }}
+                          className="px-3 py-1.5 rounded-xl bg-stone-100 hover:bg-stone-200 text-stone-700 text-xs font-medium transition-colors cursor-pointer"
+                        >
+                          填入微调
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setIsKBModalOpen(false);
+                            handleSend(tpl.template);
+                          }}
+                          className="px-3.5 py-1.5 rounded-xl bg-[#224337] hover:bg-[#1a352b] text-white text-xs font-medium shadow-xs transition-all cursor-pointer flex items-center gap-1"
+                        >
+                          <span>直接带入对话</span>
+                          <ArrowRight className="w-3 h-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* 4. 五大学派矩阵 */}
+              {kbTab === 'schools' && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in">
+                  {THEORY_SCHOOLS.map(sc => {
+                    const isCurrent = activeSchoolId === sc.id;
+                    return (
+                      <div
+                        key={sc.id}
+                        className={`bg-white/95 border rounded-2xl p-5 space-y-3 transition-all flex flex-col justify-between ${
+                          isCurrent
+                            ? 'border-[#4D7A68] ring-2 ring-[#4D7A68]/20 shadow-xs'
+                            : 'border-stone-200/70 hover:border-stone-300'
+                        }`}
+                      >
+                        <div className="space-y-2.5">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-stone-900">
+                              {sc.name}
+                            </h4>
+                            <span className="text-[10.5px] text-stone-400 font-mono">
+                              {sc.representative.split(',')[0]}
+                            </span>
+                          </div>
+
+                          <div className="text-[11px] text-stone-400 font-mono">
+                            {sc.en}
+                          </div>
+
+                          <div className="space-y-1.5 text-xs">
+                            <p className="text-stone-700">
+                              <span className="font-semibold text-stone-900">核心假设：</span>
+                              {sc.coreAssumption}
+                            </p>
+                            <p className="text-stone-600">
+                              <span className="font-semibold text-stone-800">干预机制：</span>
+                              {sc.mechanism}
+                            </p>
+                            <p className="text-stone-500">
+                              <span className="font-semibold text-stone-700">适用困扰：</span>
+                              {sc.scenarios}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="pt-2 border-t border-stone-100 flex items-center justify-between">
+                          {isCurrent ? (
+                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#4D7A68]">
+                              <Check className="w-3.5 h-3.5" />
+                              <span>当前对话已启用此流派视角</span>
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                handleSelectSchool(sc.id);
+                                setIsKBModalOpen(false);
+                              }}
+                              className="px-3 py-1.5 rounded-xl bg-[#224337] hover:bg-[#1a352b] text-white text-xs font-medium transition-all shadow-xs cursor-pointer flex items-center gap-1 ml-auto"
+                            >
+                              <span>切换为此流派视角</span>
+                              <ArrowRight className="w-3 h-3" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* 5. 危机干预与伦理准则 */}
+              {kbTab === 'crisis' && (
+                <div className="space-y-5 animate-fade-in max-w-2xl mx-auto">
+                  <div className="p-4 bg-rose-50 border border-rose-200/80 rounded-2xl space-y-2">
+                    <div className="flex items-center gap-2 text-rose-800 font-bold text-sm">
+                      <ShieldAlert className="w-4 h-4 text-rose-600" />
+                      <span>国家标准生命危机干预与保密例外原则 (Confidentiality Exceptions)</span>
+                    </div>
+                    <p className="text-xs text-rose-700 leading-relaxed">
+                      当来访者出现明确的自杀自伤意图、伤害他人意图、或虐待儿童老人事实时，根据心理咨询伦理与法律规范，保密原则无条件解除。系统将触发危机安抚协议并直接转接紧急热线。
+                    </p>
+                  </div>
+
+                  <div className="bg-white rounded-2xl border border-stone-200 p-5 space-y-3">
+                    <h4 className="text-xs font-bold text-stone-900 uppercase tracking-wider">
+                      C-SSRS 哥伦比亚自杀严重程度评估 4 步阶梯递进技术
+                    </h4>
+                    <div className="space-y-2.5">
+                      {CRISIS_SOP.cssrsSteps.map((q, idx) => (
+                        <div key={idx} className="p-3 bg-[#FAF9F6] rounded-xl border border-stone-200/60 text-xs space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-rose-900">{q.step}</span>
+                            <span className="text-[10px] text-stone-400 font-mono">{q.aim}</span>
+                          </div>
+                          <p className="text-stone-700 italic">{q.question}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-white rounded-2xl border border-stone-200 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-stone-800">24小时全国免费心理危机热线</div>
+                      <div className="text-base font-mono font-bold text-[#224337] mt-0.5">400-161-9995</div>
+                    </div>
+                    <a
+                      href="tel:4001619995"
+                      className="px-4 py-2 rounded-xl bg-[#224337] text-white text-xs font-medium hover:bg-[#1a352b] transition-colors"
+                    >
+                      拨打热线
+                    </a>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
