@@ -14,17 +14,19 @@ import {
   ShieldCheck,
   Compass,
   ArrowRight,
+  GraduationCap,
 } from 'lucide-react';
 import { db, initDatabaseDefaults } from './db';
 import { LandingShowcase } from './components/LandingShowcase';
 import { ChatWorkbench } from './components/ChatWorkbench';
 import { CBTDiaryComponent } from './components/CBTDiary';
+import { KnowledgeBaseComponent } from './components/KnowledgeBase';
 import { CrisisModal } from './components/CrisisModal';
 import { SettingsModal } from './components/SettingsModal';
 import { BreathingModal } from './components/BreathingModal';
 
 export const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'showcase' | 'chat' | 'diary'>('showcase');
+  const [activeTab, setActiveTab] = useState<'showcase' | 'chat' | 'diary' | 'knowledge'>('showcase');
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isCrisisOpen, setIsCrisisOpen] = useState(false);
   const [crisisPhrase, setCrisisPhrase] = useState<string | undefined>();
@@ -189,7 +191,7 @@ export const App: React.FC = () => {
         </div>
 
         {/* 品牌宣传与探索主页入口 */}
-        <div className="px-3.5 pt-3.5 pb-1">
+        <div className="px-3.5 pt-3.5 pb-1 space-y-1.5">
           <button
             onClick={() => setActiveTab('showcase')}
             className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-medium transition-all duration-300 cursor-pointer ${
@@ -201,6 +203,21 @@ export const App: React.FC = () => {
             <div className="flex items-center gap-2">
               <Sparkles className={`w-3.5 h-3.5 ${activeTab === 'showcase' ? 'text-emerald-300' : 'text-[#4D7A68]'}`} />
               <span>品牌主页 · 探索展示</span>
+            </div>
+            <ArrowRight className="w-3.5 h-3.5 opacity-60" />
+          </button>
+
+          <button
+            onClick={() => setActiveTab('knowledge')}
+            className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-2xl text-xs font-medium transition-all duration-300 cursor-pointer ${
+              activeTab === 'knowledge'
+                ? 'bg-[#224337] text-white shadow-[0_4px_16px_rgba(34,67,55,0.25)]'
+                : 'bg-white/80 hover:bg-white text-stone-700 border border-stone-200/70 shadow-2xs hover:shadow-xs'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <GraduationCap className={`w-3.5 h-3.5 ${activeTab === 'knowledge' ? 'text-emerald-300' : 'text-[#4D7A68]'}`} />
+              <span>专业知识库 · 咨询技术</span>
             </div>
             <ArrowRight className="w-3.5 h-3.5 opacity-60" />
           </button>
@@ -316,7 +333,7 @@ export const App: React.FC = () => {
                   ? 'MindHaven · 品牌展厅'
                   : activeTab === 'chat'
                   ? sessions.find(s => s.id === currentSessionId)?.title
-                  : '认知重塑手账'}
+                  : activeTab === 'diary' ? '认知重塑手账' : '心理咨询与对话技术专业知识库'}
               </span>
               {/* 微型柔色护盾徽标 */}
               <div className="hidden lg:flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#EAF2ED]/70 text-[#2D5849] text-[10.5px] font-medium border border-[#4D7A68]/20">
@@ -330,7 +347,7 @@ export const App: React.FC = () => {
           <div className="relative flex items-center bg-stone-200/60 p-1 rounded-2xl border border-stone-300/40 shadow-inner">
             <button
               onClick={() => setActiveTab('showcase')}
-              className={`relative z-10 flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 cursor-pointer ${
+              className={`relative z-10 flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 cursor-pointer ${
                 activeTab === 'showcase'
                   ? 'text-[#224337] font-semibold'
                   : 'text-stone-500 hover:text-stone-800'
@@ -342,7 +359,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('chat')}
-              className={`relative z-10 flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 cursor-pointer ${
+              className={`relative z-10 flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 cursor-pointer ${
                 activeTab === 'chat'
                   ? 'text-[#224337] font-semibold'
                   : 'text-stone-500 hover:text-stone-800'
@@ -354,7 +371,7 @@ export const App: React.FC = () => {
 
             <button
               onClick={() => setActiveTab('diary')}
-              className={`relative z-10 flex items-center gap-1.5 px-3 sm:px-4 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 cursor-pointer ${
+              className={`relative z-10 flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 cursor-pointer ${
                 activeTab === 'diary'
                   ? 'text-[#224337] font-semibold'
                   : 'text-stone-500 hover:text-stone-800'
@@ -364,14 +381,28 @@ export const App: React.FC = () => {
               <span>认知手账</span>
             </button>
 
-            {/* 选中的平滑位移白玉滑块 (3 段自适应平滑滑动) */}
+            <button
+              onClick={() => setActiveTab('knowledge')}
+              className={`relative z-10 flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 rounded-xl text-xs font-medium transition-all duration-300 cursor-pointer ${
+                activeTab === 'knowledge'
+                  ? 'text-[#224337] font-semibold'
+                  : 'text-stone-500 hover:text-stone-800'
+              }`}
+            >
+              <GraduationCap className="w-3.5 h-3.5 text-[#3C6152]" />
+              <span>专业知识库</span>
+            </button>
+
+            {/* 选中的平滑位移白玉滑块 (4 段自适应平滑滑动) */}
             <div
-              className={`absolute top-1 bottom-1 w-[calc(33.333%-3px)] bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-white transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+              className={`absolute top-1 bottom-1 w-[calc(25%-2px)] bg-white rounded-xl shadow-[0_2px_12px_rgba(0,0,0,0.06)] border border-white transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
                 activeTab === 'showcase'
                   ? 'translate-x-0'
                   : activeTab === 'chat'
-                  ? 'translate-x-[calc(100%+4px)]'
-                  : 'translate-x-[calc(200%+8px)]'
+                  ? 'translate-x-[calc(100%+3px)]'
+                  : activeTab === 'diary'
+                  ? 'translate-x-[calc(200%+6px)]'
+                  : 'translate-x-[calc(300%+9px)]'
               }`}
             />
           </div>
@@ -434,13 +465,15 @@ export const App: React.FC = () => {
               onExportToDiary={handleExportToDiary}
               onOpenBreathing={() => setIsBreathingOpen(true)}
             />
-          ) : (
+          ) : activeTab === 'diary' ? (
             <CBTDiaryComponent
               initialEvent={prefillDiary.event}
               initialThought={prefillDiary.thought}
               initialRational={prefillDiary.rational}
               onTriggerCrisis={handleTriggerCrisis}
             />
+          ) : (
+            <KnowledgeBaseComponent onStartTopic={handleStartTopic} />
           )}
         </main>
       </div>
