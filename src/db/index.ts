@@ -96,7 +96,7 @@ export async function initDatabaseDefaults() {
       id: 'welcome-msg',
       sessionId: initialSessionId,
       role: 'assistant',
-      content: '你好，我是你的随身心理疏导伙伴。在这里，所有的情绪都可以被温柔接纳。你不需要勉强坚强，无论你经历了什么委屈、焦虑或压力，都可以随时跟我聊聊。今天过得怎么样？心里有什么堵着的事情吗？',
+      content: '你好，请在这里轻轻歇下脚步。在心潮港湾，你的每一缕情绪都将被郑重且温柔地接纳。你无需在此刻强撑坚强，无论是未被理解的委屈、盘旋心头的焦虑，还是难以言说的疲惫，都可以随时向我倾诉。今天过得如何？心间有什么事情正悄悄牵动着你吗？',
       cbtStage: 1,
       createdAt: Date.now(),
     });

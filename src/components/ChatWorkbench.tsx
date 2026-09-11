@@ -10,12 +10,17 @@ import {
   HelpCircle,
   X,
   Lightbulb,
-  ArrowRight
+  ArrowRight,
+  Volume2,
+  VolumeX,
+  Copy,
+  Check,
 } from 'lucide-react';
 import { db, type ChatMessage } from '../db';
 import { streamAIChat } from '../services/ai';
 import { checkCrisisIntent } from '../utils/safety';
 import { SCENARIOS, CATEGORIES, type CategoryKey } from '../data/scenarios';
+import { soundTherapy } from '../utils/audio';
 
 interface ChatWorkbenchProps {
   currentSessionId: string;
@@ -31,7 +36,7 @@ const CBT_STAGES_INFO = [
     en: 'Empathize',
     icon: '🌿',
     desc: '温柔接纳当下情绪，厘清具体发生的困扰情境',
-    guide: '写下让你感到紧绷或难过的事实，无需自责，这里是绝对安全的空间。'
+    guide: '写下让你感到紧绷或难过的事实，无需自责，这里是绝对安全的空间。',
   },
   {
     stage: 2,
@@ -39,7 +44,7 @@ const CBT_STAGES_INFO = [
     en: 'Identify',
     icon: '🔍',
     desc: '捕捉脑海深处悄然涌现的消极自动化念头',
-    guide: '注意脑海中的“第一反应”：是不是出现了绝对化、灾难化的念头？'
+    guide: '注意脑海中的“第一反应”：是不是出现了绝对化、灾难化的念头？',
   },
   {
     stage: 3,
@@ -47,7 +52,7 @@ const CBT_STAGES_INFO = [
     en: 'Examine',
     icon: '💡',
     desc: '寻找客观中立的证据，辨别认知滤镜偏差',
-    guide: '问问自己：这个最坏的想法有 100% 的事实支撑吗？是否存在其他可能性？'
+    guide: '问问自己：这个最坏的想法有 100% 的事实支撑吗？是否存在其他可能性？',
   },
   {
     stage: 4,
@@ -55,7 +60,7 @@ const CBT_STAGES_INFO = [
     en: 'Reframe',
     icon: '☀️',
     desc: '构建兼顾理性与温度的替代平衡思维',
-    guide: '如果好友遇到同样处境，你会如何温和而客观地鼓励他？'
+    guide: '如果好友遇到同样处境，你会如何温和而客观地鼓励他？',
   },
 ];
 
@@ -71,6 +76,9 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
   const [showStageGuide, setShowStageGuide] = useState(false);
   const [isPromptDrawerOpen, setIsPromptDrawerOpen] = useState(false);
   const [drawerCategory, setDrawerCategory] = useState<CategoryKey>('all');
+  const [isRainActive, setIsRainActive] = useState(soundTherapy.isPlaying);
+  const [copiedMsgId, setCopiedMsgId] = useState<string | null>(null);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -102,6 +110,24 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
     window.addEventListener('keydown', handleGlobalKeyDown);
     return () => window.removeEventListener('keydown', handleGlobalKeyDown);
   }, [isPromptDrawerOpen]);
+
+  // 切换白噪音细雨声
+  const toggleRainTherapy = () => {
+    if (soundTherapy.isPlaying) {
+      soundTherapy.stop();
+      setIsRainActive(false);
+    } else {
+      soundTherapy.playRain();
+      setIsRainActive(true);
+    }
+  };
+
+  // 复制消息金句
+  const handleCopyMessage = (id: string, text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedMsgId(id);
+    setTimeout(() => setCopiedMsgId(null), 2000);
+  };
 
   // 发送消息
   const handleSend = async (contentToSend?: string) => {
@@ -216,14 +242,19 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
     : SCENARIOS.filter(s => s.category === drawerCategory);
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden relative">
-      {/* 1. Cognitive Journey Stepper (心流渐进轨迹顶栏) */}
-      <div className="shrink-0 px-4 sm:px-8 py-3 bg-white/45 backdrop-blur-xl border-b border-[#224337]/5 z-10">
+    <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-radial-at-t from-[#FBFBFA] via-[#FAF9F6] to-[#F5F4F0]">
+      {/* 柔光流韵背景氛围光晕 (Fluid Biophilic Ambient Orbs) */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-[#4D7A68]/8 rounded-full blur-[120px] pointer-events-none -z-10 animate-pulse" style={{ animationDuration: '8s' }} />
+      <div className="absolute top-1/3 right-10 w-80 h-80 bg-[#C99A5B]/8 rounded-full blur-[130px] pointer-events-none -z-10" />
+      <div className="absolute bottom-10 left-10 w-88 h-88 bg-[#E8D9C0]/15 rounded-full blur-[110px] pointer-events-none -z-10" />
+
+      {/* 1. Cognitive Journey Stepper (心流渐进与治愈音画顶栏) */}
+      <div className="shrink-0 px-4 sm:px-8 py-3.5 bg-white/60 backdrop-blur-2xl border-b border-[#224337]/6 z-10 shadow-[0_2px_12px_rgba(34,67,55,0.02)]">
         <div className="max-w-4xl mx-auto flex items-center justify-between gap-4">
           {/* 阶段轨迹导航 */}
           <div className="flex-1 flex items-center justify-between relative py-1">
             {/* 背景贯穿流光轴线 */}
-            <div className="absolute left-4 right-4 top-1/2 -translate-y-1/2 h-[2px] bg-stone-200/70 rounded-full z-0 overflow-hidden">
+            <div className="absolute left-6 right-6 top-1/2 -translate-y-1/2 h-[3px] bg-stone-200/80 rounded-full z-0 overflow-hidden shadow-inner">
               <div
                 className="h-full bg-gradient-to-r from-[#4D7A68] via-[#C99A5B] to-[#224337] transition-all duration-700 ease-out"
                 style={{ width: `${((currentStage - 1) / 3) * 100}%` }}
@@ -236,14 +267,14 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
               const isCurrent = s.stage === currentStage;
 
               return (
-                <div key={s.stage} className="relative z-10 flex flex-col items-center">
+                <div key={s.stage} className="relative z-10 flex flex-col items-center group">
                   <div
-                    className={`flex items-center gap-1.5 px-2.5 sm:px-3 py-1 rounded-full text-xs transition-all duration-500 ${
+                    className={`flex items-center gap-1.5 px-3 sm:px-3.5 py-1.5 rounded-full text-xs transition-all duration-500 ${
                       isCurrent
-                        ? 'bg-white text-[#224337] font-semibold shadow-[0_4px_16px_rgba(34,67,55,0.12)] border border-[#4D7A68]/30 scale-105'
+                        ? 'bg-white text-[#224337] font-semibold shadow-[0_6px_20px_rgba(34,67,55,0.14)] border border-[#4D7A68]/40 ring-2 ring-[#4D7A68]/15 scale-105'
                         : isPassed
-                        ? 'bg-[#EBF3EF] text-[#224337] border border-[#4D7A68]/20 shadow-xs'
-                        : 'bg-[#FAF9F6] text-stone-400 border border-stone-200/60'
+                        ? 'bg-[#EBF3EF] text-[#224337] border border-[#4D7A68]/25 shadow-2xs'
+                        : 'bg-[#FAF9F6] text-stone-400 border border-stone-200/70 opacity-80'
                     }`}
                   >
                     {isPassed ? (
@@ -263,34 +294,61 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
             })}
           </div>
 
-          {/* 阶段温馨贴士提示胶囊 */}
-          <button
-            onClick={() => setShowStageGuide(!showStageGuide)}
-            className="hidden sm:flex items-center gap-1 text-[11px] text-[#4D7A68] hover:text-[#224337] bg-white/70 hover:bg-white px-2.5 py-1 rounded-full border border-[#4D7A68]/20 transition-all cursor-pointer shadow-xs shrink-0"
-            title="查看当前阶段疏导指南"
-          >
-            <HelpCircle className="w-3 h-3" />
-            <span>阶段指引</span>
-          </button>
+          {/* 顶栏右侧快捷工具胶囊群：静谧雨声白噪音 + 阶段指引 */}
+          <div className="flex items-center gap-2 shrink-0">
+            {/* 白噪音治愈细雨开关 */}
+            <button
+              onClick={toggleRainTherapy}
+              className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-full border transition-all cursor-pointer shadow-2xs hover:scale-[1.02] active:scale-95 ${
+                isRainActive
+                  ? 'bg-[#EBF3EF] text-[#224337] border-[#4D7A68]/40 shadow-[0_2px_10px_rgba(77,122,104,0.18)] font-medium animate-pulse'
+                  : 'bg-white/80 hover:bg-white text-stone-600 border-stone-200/80 hover:border-stone-300'
+              }`}
+              title={isRainActive ? '关闭静谧细雨' : '开启轻柔细雨自然白噪音'}
+            >
+              {isRainActive ? (
+                <>
+                  <Volume2 className="w-3.5 h-3.5 text-[#4D7A68]" />
+                  <span className="text-[11.5px]">雨声流淌中</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-3.5 h-3.5 text-stone-400" />
+                  <span className="text-[11.5px]">🌧️ 静谧细雨</span>
+                </>
+              )}
+            </button>
+
+            {/* 阶段温馨贴士提示胶囊 */}
+            <button
+              onClick={() => setShowStageGuide(!showStageGuide)}
+              className="hidden sm:flex items-center gap-1 text-[11.5px] text-[#4D7A68] hover:text-[#224337] bg-white/80 hover:bg-white px-3 py-1.5 rounded-full border border-[#4D7A68]/20 transition-all cursor-pointer shadow-2xs hover:shadow-xs"
+              title="查看当前阶段疏导指南"
+            >
+              <HelpCircle className="w-3.5 h-3.5" />
+              <span>阶段指南</span>
+            </button>
+          </div>
         </div>
 
         {/* 展开的阶段温馨指南卡片 */}
         {showStageGuide && (
-          <div className="max-w-4xl mx-auto mt-2.5 p-3 rounded-2xl bg-white/80 backdrop-blur-md border border-[#4D7A68]/20 shadow-[0_4px_16px_rgba(34,67,55,0.06)] flex items-start justify-between gap-3 animate-fade-in text-xs">
+          <div className="max-w-4xl mx-auto mt-3 p-3.5 rounded-2xl bg-white/90 backdrop-blur-md border border-[#4D7A68]/20 shadow-[0_6px_20px_rgba(34,67,55,0.06)] flex items-start justify-between gap-3 animate-fade-in text-xs">
             <div className="flex items-start gap-2.5">
-              <span className="text-lg">{activeStageInfo.icon}</span>
+              <span className="text-xl">{activeStageInfo.icon}</span>
               <div>
-                <span className="font-semibold text-[#224337]">
-                  当前处于：阶段 {activeStageInfo.stage} · {activeStageInfo.title}
-                </span>
-                <p className="text-stone-600 mt-0.5 leading-relaxed">
+                <div className="font-semibold text-[#224337] flex items-center gap-2">
+                  <span>当前阶段 {activeStageInfo.stage} · {activeStageInfo.title}</span>
+                  <span className="text-[10px] text-stone-400 font-mono tracking-wide uppercase">Stage {activeStageInfo.stage}</span>
+                </div>
+                <p className="text-stone-600 mt-1 leading-relaxed">
                   {activeStageInfo.guide}
                 </p>
               </div>
             </div>
             <button
               onClick={() => setShowStageGuide(false)}
-              className="text-stone-400 hover:text-stone-700 px-2 py-0.5 rounded-md hover:bg-stone-100 transition-colors cursor-pointer"
+              className="text-stone-400 hover:text-stone-700 px-2 py-0.5 rounded-lg hover:bg-stone-100 transition-colors cursor-pointer"
             >
               收起
             </button>
@@ -303,16 +361,16 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
         <div className="max-w-3xl mx-auto space-y-7">
           {/* 当完全没有任何消息时展现的超极简指引 */}
           {messages.length === 0 && (
-            <div className="glass-sanctuary p-6 sm:p-9 rounded-[2rem] text-center space-y-4 shadow-[0_12px_40px_rgba(34,67,55,0.04)] border border-white/80 animate-fade-in">
-              <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#EBF3EF] to-[#F5F8F6] border border-[#4D7A68]/20 text-[#224337] mx-auto flex items-center justify-center shadow-[0_4px_16px_rgba(77,122,104,0.1)]">
+            <div className="bg-white/85 backdrop-blur-2xl p-6 sm:p-9 rounded-[2rem] text-center space-y-4 shadow-[0_16px_48px_rgba(34,67,55,0.05)] border border-white/90 animate-fade-in">
+              <div className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-[#EBF3EF] to-[#F5F8F6] border border-[#4D7A68]/20 text-[#224337] mx-auto flex items-center justify-center shadow-[0_6px_20px_rgba(77,122,104,0.12)]">
                 <Sparkles className="w-6 h-6 text-[#224337]" />
               </div>
               <div className="space-y-1.5">
                 <h3 className="text-lg sm:text-xl font-serif font-medium text-[#224337] tracking-tight">
-                  深呼吸，把心事放进避风港
+                  深吸一口气，把心绪安放在港湾
                 </h3>
                 <p className="text-xs sm:text-sm text-stone-500 max-w-md mx-auto leading-relaxed">
-                  这里没有评判，只有无条件的接纳、沉静的聆听与温和的理性能量。你可以倾吐任何细小的触动，或从以下精选场景开启：
+                  这里没有评判，只有无条件的接纳、深沉的倾听与温和的理性能量。你可以倾吐任何细小的触动，或从以下精选场景开启：
                 </p>
               </div>
 
@@ -322,7 +380,7 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
                   <button
                     key={sc.id}
                     onClick={() => handleSend(sc.prompt)}
-                    className="p-3.5 bg-white/85 hover:bg-white border border-stone-200/70 hover:border-[#4D7A68]/40 rounded-2xl transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_6px_20px_rgba(77,122,104,0.08)] hover:-translate-y-0.5 text-left cursor-pointer group"
+                    className="p-3.5 bg-white/90 hover:bg-white border border-stone-200/70 hover:border-[#4D7A68]/40 rounded-2xl transition-all duration-300 shadow-[0_2px_8px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(77,122,104,0.09)] hover:-translate-y-0.5 text-left cursor-pointer group"
                   >
                     <div className="flex items-center justify-between mb-1.5">
                       <div className="flex items-center gap-1.5">
@@ -350,10 +408,10 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
                 <button
                   type="button"
                   onClick={() => setIsPromptDrawerOpen(true)}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/90 hover:bg-white border border-[#C99A5B]/30 hover:border-[#C99A5B]/60 text-xs font-medium text-[#73582A] shadow-2xs hover:shadow-xs transition-all cursor-pointer"
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/95 hover:bg-white border border-[#C99A5B]/30 hover:border-[#C99A5B]/60 text-xs font-medium text-[#73582A] shadow-2xs hover:shadow-xs transition-all cursor-pointer"
                 >
                   <Sparkles className="w-3.5 h-3.5 text-[#C99A5B]" />
-                  <span>探索更多心绪素材与提示词（共 {SCENARIOS.length} 组场景）</span>
+                  <span>探索更多心绪素材与场景对话（共 {SCENARIOS.length} 组场景）</span>
                   <ArrowRight className="w-3.5 h-3.5" />
                 </button>
               </div>
@@ -367,7 +425,7 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
             if (isUser) {
               return (
                 <div key={msg.id} className="flex justify-end animate-fade-in">
-                  <div className="max-w-[85%] sm:max-w-[78%] bg-gradient-to-br from-[#224337] to-[#1a352b] text-[#FAF9F6] rounded-[22px_22px_6px_22px] px-5 py-3.5 text-[15px] leading-[1.8] tracking-[0.015em] shadow-[0_6px_24px_rgba(34,67,55,0.18)] selection:bg-[#4D7A68]/50 selection:text-white">
+                  <div className="max-w-[85%] sm:max-w-[78%] bg-gradient-to-br from-[#224337] via-[#1b382e] to-[#142b23] text-[#FAF9F6] rounded-[24px_24px_6px_24px] px-5 py-4 text-[15px] leading-[1.8] tracking-[0.015em] shadow-[0_8px_28px_rgba(34,67,55,0.2),inset_0_1px_1px_rgba(255,255,255,0.15)] selection:bg-[#4D7A68]/50 selection:text-white">
                     {msg.content}
                   </div>
                 </div>
@@ -377,35 +435,54 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
             return (
               <div key={msg.id} className="flex gap-3.5 items-start animate-fade-in group">
                 {/* 助手羊脂玉头像 */}
-                <div className="w-9 h-9 rounded-2xl bg-white/85 backdrop-blur-md border border-white/90 text-[#224337] flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(34,67,55,0.06)] mt-0.5">
+                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-white to-[#F5F8F6] border border-white/90 text-[#224337] flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(34,67,55,0.08)] mt-0.5 ring-2 ring-[#4D7A68]/10">
                   <Sparkles className="w-4 h-4 text-[#4D7A68]" />
                 </div>
 
                 {/* 助手羊脂白玉容器 */}
                 <div className="space-y-2 flex-1 min-w-0">
-                  <div className="bg-white/85 backdrop-blur-xl border border-white/90 rounded-[22px_22px_22px_6px] p-5 sm:p-6 text-[15.5px] leading-[1.8] text-stone-800 shadow-[0_8px_32px_rgba(34,67,55,0.05)] tracking-[0.015em] selection:bg-[#4D7A68]/20">
-                    {/* 晨露琥珀色认知偏差胶囊 */}
+                  <div className="bg-white/92 backdrop-blur-xl border border-white/95 rounded-[24px_24px_24px_6px] p-5 sm:p-6 text-[15.5px] leading-[1.85] text-stone-800 shadow-[0_10px_36px_rgba(34,67,55,0.06)] tracking-[0.015em] selection:bg-[#4D7A68]/20">
+                    {/* 晨露琥珀色认知偏差胶囊 (Wax seal badge) */}
                     {msg.distortionTag && (
-                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#FCF7F0] text-[#8C6D3F] border border-[#E8D9C0] shadow-[0_2px_8px_rgba(201,154,91,0.1)] mb-3">
-                        <span>💡 识别思维滤镜：</span>
-                        <span className="font-semibold text-[#73582A]">{msg.distortionTag}</span>
+                      <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium bg-[#FAF4EB] text-[#7A5B28] border border-[#E2CEB1] shadow-[0_2px_10px_rgba(201,154,91,0.12)] mb-3.5">
+                        <Lightbulb className="w-3.5 h-3.5 text-[#C99A5B]" />
+                        <span>觉察思维滤镜：</span>
+                        <span className="font-semibold text-[#66491D]">{msg.distortionTag}</span>
                       </div>
                     )}
 
-                    <div className="whitespace-pre-wrap">
+                    <div className="whitespace-pre-wrap font-sans text-stone-800/95">
                       {msg.content}
                     </div>
                   </div>
 
-                  {/* 微交互工具栏 */}
+                  {/* 微交互工具栏：提炼至手账 + 复制金句 */}
                   <div className="flex items-center gap-2 pl-2 opacity-60 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => extractToDiary(msg)}
-                      className="text-xs text-stone-400 hover:text-[#224337] flex items-center gap-1.5 px-3 py-1 rounded-xl hover:bg-white/80 border border-transparent hover:border-stone-200/50 transition-all cursor-pointer shadow-2xs"
+                      className="text-xs text-stone-500 hover:text-[#224337] flex items-center gap-1.5 px-3 py-1 rounded-xl hover:bg-white/90 border border-transparent hover:border-stone-200/60 transition-all cursor-pointer shadow-2xs"
                       title="将此启发沉淀至三栏重塑手账"
                     >
                       <BookOpen className="w-3.5 h-3.5 text-[#4D7A68]" />
                       <span>提炼至手账</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleCopyMessage(msg.id, msg.content)}
+                      className="text-xs text-stone-400 hover:text-stone-700 flex items-center gap-1.5 px-2.5 py-1 rounded-xl hover:bg-white/80 transition-all cursor-pointer"
+                      title="复制回复文本"
+                    >
+                      {copiedMsgId === msg.id ? (
+                        <>
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span className="text-emerald-700 text-[11px]">已复制</span>
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3.5 h-3.5 text-stone-400" />
+                          <span className="text-[11px]">复制</span>
+                        </>
+                      )}
                     </button>
                   </div>
 
@@ -460,10 +537,10 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
           {/* 实时打字机流式气泡 */}
           {isGenerating && streamingContent && (
             <div className="flex gap-3.5 items-start animate-fade-in">
-              <div className="w-9 h-9 rounded-2xl bg-white/85 backdrop-blur-md border border-white/90 text-[#224337] flex items-center justify-center shrink-0 shadow-[0_4px_12px_rgba(34,67,55,0.06)] mt-0.5">
+              <div className="w-9 h-9 rounded-2xl bg-white/90 backdrop-blur-md border border-white/90 text-[#224337] flex items-center justify-center shrink-0 shadow-[0_4px_16px_rgba(34,67,55,0.08)] mt-0.5">
                 <Sparkles className="w-4 h-4 text-[#4D7A68] animate-spin" />
               </div>
-              <div className="flex-1 bg-white/85 backdrop-blur-xl border border-white/90 rounded-[22px_22px_22px_6px] p-5 sm:p-6 text-[15.5px] leading-[1.8] text-stone-800 shadow-[0_8px_32px_rgba(34,67,55,0.05)] tracking-[0.015em]">
+              <div className="flex-1 bg-white/92 backdrop-blur-xl border border-white/95 rounded-[24px_24px_24px_6px] p-5 sm:p-6 text-[15.5px] leading-[1.85] text-stone-800 shadow-[0_10px_36px_rgba(34,67,55,0.06)] tracking-[0.015em]">
                 <div className="whitespace-pre-wrap">
                   {streamingContent}
                   <span className="inline-block w-2 h-4 ml-1 bg-[#4D7A68] animate-pulse align-middle rounded-sm" />
@@ -476,7 +553,7 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
           {isGenerating && !streamingContent && (
             <div className="flex items-center gap-2.5 text-stone-400 text-xs pl-12 animate-fade-in">
               <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#4D7A68]" />
-              <span>疏导助手正在静心体察并梳理思绪...</span>
+              <span>疏导导师正在静心体察并梳理思绪...</span>
             </div>
           )}
 
@@ -484,7 +561,7 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
         </div>
       </div>
 
-      {/* 3. Zen Breathing & Prompt Sanctuary Floating Bar & Input Dock (悬浮指令岛) */}
+      {/* 3. Zen Floating Bar & Input Dock (悬浮指令岛) */}
       <div className="p-4 sm:p-6 shrink-0 z-20 pointer-events-none">
         <div className="max-w-3xl mx-auto pointer-events-auto">
           {/* Zen 呼吸安抚胶囊与素材库按键群 */}
@@ -492,7 +569,7 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
             <button
               type="button"
               onClick={onOpenBreathing}
-              className="group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/85 hover:bg-white/95 backdrop-blur-md border border-[#4D7A68]/20 shadow-[0_4px_16px_rgba(77,122,104,0.08)] hover:shadow-[0_6px_20px_rgba(77,122,104,0.15)] text-xs text-[#224337] transition-all hover:scale-[1.02] cursor-pointer"
+              className="group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-white/90 hover:bg-white backdrop-blur-md border border-[#4D7A68]/20 shadow-[0_4px_16px_rgba(77,122,104,0.08)] hover:shadow-[0_6px_20px_rgba(77,122,104,0.15)] text-xs text-[#224337] transition-all hover:scale-[1.02] cursor-pointer"
             >
               <Wind className="w-3.5 h-3.5 text-[#4D7A68] animate-pulse" />
               <span className="text-[11.5px] font-medium">
@@ -502,25 +579,47 @@ export const ChatWorkbench: React.FC<ChatWorkbenchProps> = ({
 
             <button
               type="button"
+              onClick={toggleRainTherapy}
+              className={`group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full backdrop-blur-md border transition-all hover:scale-[1.02] cursor-pointer ${
+                isRainActive
+                  ? 'bg-[#EBF3EF] text-[#224337] border-[#4D7A68]/40 shadow-[0_4px_16px_rgba(77,122,104,0.15)] font-medium'
+                  : 'bg-white/90 hover:bg-white text-stone-600 border-stone-200/80 shadow-[0_4px_16px_rgba(0,0,0,0.04)]'
+              }`}
+            >
+              {isRainActive ? (
+                <>
+                  <Volume2 className="w-3.5 h-3.5 text-[#4D7A68]" />
+                  <span className="text-[11.5px]">细雨流淌中</span>
+                </>
+              ) : (
+                <>
+                  <VolumeX className="w-3.5 h-3.5 text-stone-400" />
+                  <span className="text-[11.5px]">🌧️ 静谧雨声</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
               onClick={() => setIsPromptDrawerOpen(true)}
               className="group flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#FCF7F0]/95 hover:bg-[#FAF3E8] backdrop-blur-md border border-[#C99A5B]/30 shadow-[0_4px_16px_rgba(201,154,91,0.08)] hover:shadow-[0_6px_20px_rgba(201,154,91,0.15)] text-xs text-[#73582A] transition-all hover:scale-[1.02] cursor-pointer"
             >
               <Sparkles className="w-3.5 h-3.5 text-[#C99A5B]" />
               <span className="text-[11.5px] font-medium">
-                💡 心绪素材与场景灵感库
+                💡 心绪场景灵感库
               </span>
             </button>
           </div>
 
           {/* 悬浮指令岛核心输入框 */}
-          <div className="bg-white/85 backdrop-blur-2xl rounded-3xl border border-white/90 shadow-[0_12px_44px_rgba(34,67,55,0.08)] p-3 sm:p-3.5 transition-all duration-300 focus-within:shadow-[0_16px_48px_rgba(77,122,104,0.15)] focus-within:border-[#4D7A68]/40 focus-within:ring-4 focus-within:ring-[#4D7A68]/10 flex flex-col gap-2">
+          <div className="bg-white/90 backdrop-blur-2xl rounded-3xl border border-white/95 shadow-[0_16px_48px_rgba(34,67,55,0.08)] p-3 sm:p-3.5 transition-all duration-300 focus-within:shadow-[0_20px_54px_rgba(77,122,104,0.16)] focus-within:border-[#4D7A68]/40 focus-within:ring-4 focus-within:ring-[#4D7A68]/10 flex flex-col gap-2">
             <textarea
               ref={textareaRef}
               rows={2}
               value={inputVal}
               onChange={handleTextareaInput}
               onKeyDown={handleKeyDown}
-              placeholder="说出此刻的心情或困扰...（Enter 发送，Shift+Enter 换行）"
+              placeholder="说出此刻的心情或困扰... 每一声叹息都会被温柔听见（Enter 发送，Shift+Enter 换行）"
               className="w-full bg-transparent border-0 resize-none px-3 py-1.5 text-[14.5px] text-stone-800 placeholder-stone-400 focus:outline-hidden leading-relaxed max-h-36"
             />
             <div className="flex items-center justify-between pt-2 border-t border-stone-100/80 px-1">

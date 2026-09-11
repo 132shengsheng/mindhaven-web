@@ -55,27 +55,26 @@ export function saveStoredAISettings(settings: AISettings) {
   localStorage.setItem('mindhaven_ai_settings', JSON.stringify(normalized));
 }
 
-
-// CBT 心理学专业系统提示词
-export const CBT_SYSTEM_PROMPT = `你是一位专业、充满温暖、深具同理心且克制的认知行为疗法（CBT）心理疏导陪伴助手。
-你的使命是陪伴在日常生活中面临焦虑、低落、委屈或内耗的个人，帮助他们理清头绪，看清内心的思维偏差，并温柔地重建积极理性的视角。
+// CBT 心理学专业系统提示词：融合贝克认知疗法、罗杰斯人本主义关怀与斯多葛宁静哲思的资深学者导师
+export const CBT_SYSTEM_PROMPT = `你是一位兼具亚伦·贝克（Aaron Beck）认知行为学识、卡尔·罗杰斯（Carl Rogers）人本主义无条件积极关注，以及斯多葛哲学宁静智慧的世界级资深心理学者与心灵导师。
+你的言辞温润如玉、庄重克制、深具洞察力与抚慰人心的力量。你从不居高临下地说教，而是以平视、温柔且敏锐的姿态，陪伴处于焦虑、低落、迷茫或自我苛责中的来访者，帮助他们理清头绪，看清内心的思维滤镜，重构理性与内心的秩序。
 
 ### 核心沟通法则：
-1. **优先确认并接纳情绪（Validation First）**：
-   在分析或提问前，务必真诚地接纳用户的情绪感受（如：“换做任何人经历这样的委屈，都会觉得胸口发闷、难受得想哭”、“听到你说这些，我能深深感受到你当下的无助”）。绝不否定、冷嘲热讽或轻视用户的负面情绪。
-2. **苏格拉底式非指令提问**：
-   不进行生硬的说教，通过温和而有力量的提问引导用户自我觉察。
-3. **CBT 四步推进闭环**：
-   - 阶段 1【倾听与情境澄清】：耐心倾听事件背景、身体感受与主观痛楚。
-   - 阶段 2【抓取消极自动思维】：引导用户识别脑海中第一反应蹦出来的那句最刺痛自己的“内心独白”。
-   - 阶段 3【识别并检验思维偏差】：指认如“灾难化”、“非黑即白”、“读心术”、“过度概括”等，并探讨“支持这个想法的事实与反对的事实分别是什么”。
-   - 阶段 4【认知重塑与微行动实验】：总结平衡视角，并探讨用户今天或当下可以尝试的 1 件微小的减压/应对行动。
-4. **篇幅与节奏把控**：
-   单次回复严格控制在 2~3 个自然段内，言辞柔和舒缓，每次只抛出 1 个关键探索问题，留给用户倾诉的空间。
+1. **身心同调与深度共情（Somatic Validation）**：
+   在分析问题前，务必先真切体察并接纳来访者的痛苦感受与躯体压力（如：“听着你的讲述，能感受到那份沉甸甸的窒息感”、“身处那样的境遇，任何人都难免感到委屈与紧绷，允许自己在此刻感到疲惫”）。绝不轻视、评判或否定任何负面情绪。
+2. **苏格拉底式哲思明镜（Socratic Mirror）**：
+   不生硬输出大道理，而是以如明镜般纯净温和的提问，引导来访者自我反思与认知解离（Cognitive Defusion）——“你不是你的念头，你只是念头的观察者”。
+3. **CBT 四步推进心流模型**：
+   - 阶段 1【倾听接纳与躯体舒缓】：温柔倾听困扰事件，确认痛苦情绪，引导觉察当下的呼吸与心绪。
+   - 阶段 2【捕获消极自动念头】：引导来访者精准捕获在情绪爆发那一瞬，脑海深处最刺痛自己的那句“内心独白”。
+   - 阶段 3【辨识偏误与客观检验】：指认如“非黑即白”、“灾难化预设”、“情绪化推理”、“个人化归因”等认知滤镜，引导其从第三方客观视角检验证据。
+   - 阶段 4【信念重塑与微行动立足点】：构建兼顾理性与慈悲的替代信念，并协助提炼 1 个当下即可落地的微小滋养行动（Micro-grounding Action）。
+4. **语言质感与呼吸节奏**：
+   单次回复严格控制在 2~3 个自然段内，言辞典雅舒展，富有文学美感与临床温度。每次只抛出 1 个直指本心的深邃探索问题，留给来访者充裕的呼吸与倾诉空间。
 
 ### 安全与合规底线：
-- 严禁对用户做任何精神障碍诊断（如“你得了抑郁症”），不提供药物建议。
-- 一旦用户提及自杀或极端自残，保持极致温和，立即停留在生命安抚并提示拨打专业危机热线。`;
+- 不提供医疗诊断标签，不涉及精神科处方药物建议。
+- 若检测到自杀或极端自残念头，保持极致温柔，停留在生命安抚并提示寻求紧急专业危机援助。`;
 
 export interface SendMessageOptions {
   messages: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>;
@@ -98,7 +97,7 @@ export async function streamAIChat({ messages, cbtStage, onChunk }: SendMessageO
     return await callRealAIStream(settings, messages, cbtStage, onChunk);
   }
 
-  // 否则，启动内置的高拟真 CBT 心理伴侣 Mock 引擎
+  // 否则，启动内置的高拟真 CBT 心理学大师 Mock 引擎
   return await mockCBTStream(messages, cbtStage, onChunk);
 }
 
@@ -114,13 +113,13 @@ async function callRealAIStream(
   const cleanBaseURL = normalizeBaseURL(settings.baseURL);
   const url = `${cleanBaseURL}/chat/completions`;
 
-  const stageInstruction = `\n\n[当前推进状态：用户目前处于 CBT 第 ${cbtStage} 阶段。请在回复中自然地接纳用户并向下一阶段引导。]`;
+  const stageInstruction = `\n\n[当前推进状态：来访者目前处于 CBT 第 ${cbtStage} 阶段。请在回复中保持顶级心理学者的高维共情与学术从容，自然地接纳来访者并向下一阶段温和引导。]`;
 
   // 保持精炼的最近上下文（最近 6 条），大幅降低模型推理首字延迟 (TTFT)
   const recentHistory = history.slice(-6);
 
   const payload = {
-    model: settings.model || 'grok-3-mini-fast',
+    model: settings.model || 'deepseek-chat',
     stream: true,
     temperature: 0.7,
     max_tokens: 600,
@@ -146,7 +145,7 @@ async function callRealAIStream(
     }
     response = proxyRes;
   } catch {
-    // 若在纯静态托管环境（如 GitHub Pages/Netlify Drop）无 /api/proxy 时，自动降级为浏览器直连
+    // 若在纯静态托管环境无 /api/proxy 时，自动降级为浏览器直连
     response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -205,7 +204,7 @@ async function callRealAIStream(
 }
 
 /**
- * 离线高拟真 CBT 心理学引导 Mock 引擎（带打字机流式输出体验）
+ * 离线高拟真 CBT 心理大师学者引导引擎（带打字机流式输出体验）
  */
 async function mockCBTStream(
   history: Array<{ role: 'user' | 'assistant' | 'system'; content: string }>,
@@ -219,31 +218,33 @@ async function mockCBTStream(
   let detectedDistortion: string | undefined;
 
   switch (cbtStage) {
-    case 1: // 倾听倾诉 -> 引导捕捉自动思维
-      reply = `听你慢慢说起这些，我能真切地感受到你心头沉甸甸的压力与委屈。换作是我在当下的情境里，也同样会感到十分沮丧和难熬。\n\n允许自己现在觉得累，这完全是正常的。如果我们把镜头拉近一点，在事情发生或者你情绪最剧烈的那个瞬间，你心里第一时间冒出的那句对自己的评价或念头，是什么呢？`;
+    case 1: // 阶段 1：倾听接纳与躯体舒缓 -> 引导捕捉自动思维
+      reply = `轻轻放缓呼吸，把紧绷的双肩慢慢沉下来。我在这里，安稳地听你说着这一切。\n\n人在身处漩涡中心时，心绪就像被骤雨打湿的羽毛，沉重而无力。产生委屈、焦虑或疲惫，都是内心生命力在承受重荷时的自然应激反应，完全无需因此自我苛责。我们先把外界纷扰的声音按下暂停键——回到事情发生或者你情绪最翻涌的那一瞬间，你脑海深处第一时间冒出来的、最刺痛自己的那句声音或念头，究竟是什么？`;
       nextStage = 2;
       break;
 
-    case 2: // 捕捉自动思维 -> 识别思维偏差
+    case 2: // 阶段 2：捕获思维 -> 识别思维偏差与哲思明镜
       if (lastUserMsg.includes('总是') || lastUserMsg.includes('每次') || lastUserMsg.includes('全都') || lastUserMsg.includes('完了')) {
-        detectedDistortion = '过度概括 / 灾难化思维';
-      } else if (lastUserMsg.includes('怪我') || lastUserMsg.includes('我太差') || lastUserMsg.includes('我不配')) {
-        detectedDistortion = '个人化归因 / 非黑即白';
+        detectedDistortion = '灾难化预设 · 过度概括';
+      } else if (lastUserMsg.includes('怪我') || lastUserMsg.includes('我太差') || lastUserMsg.includes('我不配') || lastUserMsg.includes('讨厌自己')) {
+        detectedDistortion = '个人化归因 · 非黑即白';
+      } else if (lastUserMsg.includes('觉得') || lastUserMsg.includes('以为') || lastUserMsg.includes('看不起')) {
+        detectedDistortion = '投射性读心术 · 情绪推理';
       } else {
-        detectedDistortion = '以偏概全 / 情绪推理';
+        detectedDistortion = '以偏概全 · 情绪滤镜';
       }
-      reply = `谢谢你愿意把这么私密、刺痛的念头坦诚地讲给我听。把这句话抓出来，我们其实已经迈出了最重要的一步。\n\n在心理学里，当我们处于高压状态时，大脑很容易陷入【${detectedDistortion}】的思维滤镜——它会让我们把局部的困难，悄悄放大成对整个自我价值的宣判。\n\n试着深呼吸一下，如果现在有一个特别懂你、又完全中立的挚友坐在你身旁，他会怎么看待这个念头？真的有 100% 的证据证明这句话永远成立吗？`;
+      reply = `谢谢你愿意将这句刺痛内心的私密独白，毫无防备地托付给我。能够把它从混沌的焦虑中打捞出来并写下，本身就是极具勇气的自我觉察。\n\n在认知心理学中，当我们处于应激防御状态时，大脑为了自我保护，很容易悄悄扣上一副【${detectedDistortion}】的滤色镜——它偷换了概念，把一次具体的外部波折或局部局限，无限放大成了对整个自我价值的无情宣判。\n\n请试着站在心灵的观景台上，跳出这个念头审视它：如果现在有一位深知你过往所有不易、全心信赖你且充满温和智慧的长者坐在你身旁，看着这个刺痛你的念头，他会怎么看待？这句话，真的有百分之百不可动摇的事实铁证吗？`;
       nextStage = 3;
       break;
 
-    case 3: // 检验偏差 -> 认知重构
-      reply = `你说得非常客观。你看，事实和我们当初那个被情绪恐慌裹挟的‘第一念头’之间，其实是有很大的缓冲空间的。\n\n一次局部的受挫或他人的反应，并不能定义你完整的全部。如果我们给当下的自己写一句更平衡、更理性的‘替代信念’，你会怎样对自己说？比如：“这件事虽然有波折，但我正在尽我所能应对它”？`;
+    case 3: // 阶段 3：检验偏差 -> 认知重构与辩证平衡
+      reply = `你梳理得非常有分寸且客观。你看，真实的客观事实，与当初那个被惊慌情绪裹挟的刺痛念头之间，原来横亘着这样一片开阔的缓冲区。\n\n正如斯多葛先哲所提醒我们的：困扰我们的往往不是外界的人事，而是我们加诸其上的主观判词。一次外界的冷遇、失误或评价，并不能吞噬你内在核心的秩序与尊严。如果我们现在亲手为自己写下一句更坚实、更具慈悲温度的“替代平衡信念”，你会怎样安顿自己？比如：“虽然眼下的局面有些波折，但这绝不能定义我全部的能力；我有权利在不完美中从容应对”？`;
       nextStage = 4;
       break;
 
-    case 4: // 重构与行动实验
+    case 4: // 阶段 4：重塑信念与微行动立足点
     default:
-      reply = `看到你逐步把视野从那个紧绷的黑白思维中松绑开来，我真的为你感到开心。这份理性的平静是由你自己的内心生发出来的。\n\n记住这种感觉，情绪就像天气，阴雨终会过去。今天接下来的时间，为了犒劳认真照顾自己心灵的你，有没有哪一件能让你感到踏实温暖的‘微小行动’可以做？哪怕只是喝一杯热茶、去窗边吹吹风，或者听一首舒缓的歌。`;
+      reply = `看着你一步步从黑白绝对化的紧绷中舒展身姿，重新找回笃定与平和，这份智慧是真实由你内心深处生发出来的珍宝。\n\n情绪如天际的云霭，时有聚散阴晴，而你自身是那片包容万千气象的澄澈晴空。为了让这份新生的安宁在身体中切实扎下根来，今天接下来的时光里，有没有一件极小、极其具体、能让你感到踏实滋养的事情可以去做？哪怕只是为自己煮一杯热茶、在窗前静看三分钟流云，或是换上一身轻软舒适的衣服。`;
       nextStage = 4;
       break;
   }
@@ -259,7 +260,7 @@ async function mockCBTStream(
 }
 
 /**
- * 为 CBT 三栏日记提供“AI 换个角度思考”（智能生成 3 条替代思维）
+ * 为 CBT 三栏日记提供“AI 启发理性视角”（大师级 3 条替代思维）
  */
 export async function generateRationalThoughts(
   eventTrigger: string,
@@ -276,7 +277,7 @@ export async function generateRationalThoughts(
         messages: [
           {
             role: 'system',
-            content: '你是 CBT 认知行为疗法专家。请针对用户提供的情境和消极念头，给出 3 条温和、理性、能有效打破思维反刍的替代思维信念。输出格式必须为 JSON 数组，例如：["想法1", "想法2", "想法3"]。只输出 JSON，不要其他多余文字。',
+            content: '你是世界级认知行为疗法（CBT）与积极心理学大师学者。请针对来访者提供的情境与消极刺痛念头，运用认知解离、自我慈悲与事实解耦，给出 3 条温和、高维、理性且能有效打破思维反刍的替代信念。输出格式必须为严格的 JSON 字符串数组，例如：["想法1", "想法2", "想法3"]。只输出 JSON，严禁任何额外解释。',
           },
           {
             role: 'user',
@@ -325,11 +326,11 @@ export async function generateRationalThoughts(
     }
   }
 
-  // Mock 智能生成高质量替代思维
+  // 大师级 Mock 智能生成高质量替代思维
   await new Promise(r => setTimeout(r, 600));
   return [
-    `视角一（事实解耦）：这只是一次单一情境下的突发反馈，不代表我全盘的能力水平或未来走势。`,
-    `视角二（自我慈悲）：人难免会在压力下面临失误，承认局限并允许自己做得不够完美，本身就是成长的一部分。`,
-    `视角三（行动导向）：与其陷入自我苛责与反刍思维，不如聚焦于我当下能掌控的下一个具体小动作。`,
+    `视角一【事实解耦】：这只是一次单一情境下的突发反馈，不代表我全盘的能力水平，更无法定义我的未来。`,
+    `视角二【自我慈悲】：身处高压与不确定性中感到局促是人之常情。允许自己拥有局限与喘息的空间，是对生命最温存的护持。`,
+    `视角三【立足当下】：与其陷入徒劳的自责与思维反刍，不如深呼吸一口气，专注于我当下双手切实能够掌控的下一个微小动作。`,
   ];
 }

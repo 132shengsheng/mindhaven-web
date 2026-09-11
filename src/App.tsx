@@ -77,7 +77,7 @@ export const App: React.FC = () => {
       id: 'msg-' + Date.now(),
       sessionId: newId,
       role: 'assistant',
-      content: '深呼吸，慢慢放松下来。这里是专属于你一个人的安全港湾。今天最让你感到困扰或情绪波动的事情是什么呢？随心写下来就好。',
+      content: '深吸一口气，把紧绷的身心轻轻安放下来。这里是专属于你一人的静谧港湾，外界的风雨在此刻都被隔开。今天最让你感到困扰或心绪难平的事情是什么？随心写下来就好，我一直都在这里。',
       cbtStage: 1,
       createdAt: Date.now(),
     });
